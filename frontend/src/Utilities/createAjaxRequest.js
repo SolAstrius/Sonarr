@@ -11,9 +11,10 @@ function addRootUrl(ajaxOptions) {
   ajaxOptions.url = apiRoot + ajaxOptions.url;
 }
 
-function addApiKey(ajaxOptions) {
-  ajaxOptions.headers = ajaxOptions.headers || {};
-  ajaxOptions.headers['X-Api-Key'] = window.Sonarr.apiKey;
+function addCredentials(ajaxOptions) {
+  // The session cookie authenticates the API (see Startup.cs); the UI no longer
+  // holds the API key at all.
+  ajaxOptions.xhrFields = { ...ajaxOptions.xhrFields, withCredentials: true };
 }
 
 function addContentType(ajaxOptions) {
@@ -41,7 +42,7 @@ export default function createAjaxRequest(originalAjaxOptions) {
 
   if (isRelative(ajaxOptions)) {
     addRootUrl(ajaxOptions);
-    addApiKey(ajaxOptions);
+    addCredentials(ajaxOptions);
     addContentType(ajaxOptions);
   }
 

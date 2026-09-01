@@ -61,8 +61,9 @@ function Logger(minimumLogLevel) {
 }
 
 Logger.prototype.cleanse = function(message) {
-  const apikey = new RegExp(`access_token=${encodeURIComponent(window.Sonarr.apiKey)}`, 'g');
-  return message.replace(apikey, 'access_token=(removed)');
+  // Kept as a belt-and-braces scrub: the UI no longer puts a token on the URL,
+  // but a token pasted in by hand should still never reach the console.
+  return message.replace(/access_token=[^&\s]+/g, 'access_token=(removed)');
 };
 
 Logger.prototype.log = function(logLevel, message) {
@@ -105,7 +106,7 @@ class SignalRConnector extends Component {
 
     this.connection = new signalR.HubConnectionBuilder()
       .configureLogging(new Logger(signalR.LogLevel.Information))
-      .withUrl(`${url}?access_token=${encodeURIComponent(window.Sonarr.apiKey)}`)
+      .withUrl(url)
       .withAutomaticReconnect({
         nextRetryDelayInMilliseconds: (retryContext) => {
           if (retryContext.elapsedMilliseconds > 180000) {

@@ -16,7 +16,6 @@ namespace Sonarr.Http.Frontend
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IAnalyticsService _analyticsService;
 
-        private static string _apiKey;
         private static string _urlBase;
         private string _generatedContent;
 
@@ -26,7 +25,6 @@ namespace Sonarr.Http.Frontend
             _configFileProvider = configFileProvider;
             _analyticsService = analyticsService;
 
-            _apiKey = configFileProvider.ApiKey;
             _urlBase = configFileProvider.UrlBase;
         }
 
@@ -46,7 +44,6 @@ namespace Sonarr.Http.Frontend
             var builder = new StringBuilder();
             builder.AppendLine("{");
             builder.AppendLine($"  \"apiRoot\": \"{_urlBase}/api/v3\",");
-            builder.AppendLine($"  \"apiKey\": \"{_apiKey}\",");
             builder.AppendLine($"  \"release\": \"{BuildInfo.Release}\",");
             builder.AppendLine($"  \"version\": \"{BuildInfo.Version.ToString()}\",");
             builder.AppendLine($"  \"instanceName\": \"{_configFileProvider.InstanceName.ToString()}\",");

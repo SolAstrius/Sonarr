@@ -30,10 +30,7 @@ function useApiQuery<T>(options: QueryOptions) {
 
     return {
       url: getUrl(url),
-      headers: {
-        ...headers,
-        'X-Api-Key': window.Sonarr.apiKey,
-      },
+      headers,
     };
   }, [url, headers]);
 
@@ -42,6 +39,7 @@ function useApiQuery<T>(options: QueryOptions) {
     queryFn: async () => {
       const result = await fetch(final.url, {
         headers: final.headers,
+        credentials: 'same-origin',
       });
 
       if (!result.ok) {

@@ -12,6 +12,7 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { icons, inputTypes, kinds, sizes } from 'Helpers/Props';
+import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 
@@ -22,6 +23,15 @@ interface CalendarLinkModalContentProps {
 function CalendarLinkModalContent({
   onModalClose,
 }: CalendarLinkModalContentProps) {
+  // The iCal URL is fetched by a third party that has no session, so this link
+  // genuinely needs a key.  It is read on demand rather than kept ambient in
+  // window.Sonarr, which no longer carries it.
+  const { data: hostConfig } = useApiQuery<{ apiKey: string }>({
+    url: '/config/host',
+  });
+
+  const apiKey = hostConfig?.apiKey ?? '';
+
   const [state, setState] = useState({
     unmonitored: false,
     premieresOnly: false,
@@ -61,13 +71,13 @@ function CalendarLinkModalContent({
       icalUrl += `tags=${tags.toString()}&`;
     }
 
-    icalUrl += `apikey=${encodeURIComponent(window.Sonarr.apiKey)}`;
+    icalUrl += `apikey=${encodeURIComponent(apiKey)}`;
 
     return {
       iCalHttpUrl: `${window.location.protocol}//${icalUrl}`,
       iCalWebCalUrl: `webcal://${icalUrl}`,
     };
-  }, [unmonitored, premieresOnly, asAllDay, tags]);
+  }, [unmonitored, premieresOnly, asAllDay, tags, apiKey]);
 
   return (
     <ModalContent onModalClose={onModalClose}>

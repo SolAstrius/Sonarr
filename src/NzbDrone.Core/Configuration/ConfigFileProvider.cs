@@ -66,6 +66,13 @@ namespace NzbDrone.Core.Configuration
         string PostgresMainDb { get; }
         string PostgresLogDb { get; }
         bool TrustCgnatIpAddresses { get; }
+        string OidcAuthority { get; }
+        string OidcClientId { get; }
+        string OidcClientSecret { get; }
+        string OidcScopes { get; }
+        string OidcRequiredGroup { get; }
+        string OidcGroupsClaim { get; }
+        string OidcUsernameClaim { get; }
     }
 
     public class ConfigFileProvider : IConfigFileProvider
@@ -478,5 +485,15 @@ namespace NzbDrone.Core.Configuration
         }
 
         public bool TrustCgnatIpAddresses => _authOptions.TrustCgnatIpAddresses ?? GetValueBoolean("TrustCgnatIpAddresses", false, persist: false);
+
+        // OIDC settings are read-only from config.xml/env; they are never persisted
+        // back, so a bad value can always be corrected by the env var alone.
+        public string OidcAuthority => _authOptions.OidcAuthority ?? GetValue("OidcAuthority", string.Empty, persist: false);
+        public string OidcClientId => _authOptions.OidcClientId ?? GetValue("OidcClientId", string.Empty, persist: false);
+        public string OidcClientSecret => _authOptions.OidcClientSecret ?? GetValue("OidcClientSecret", string.Empty, persist: false);
+        public string OidcScopes => _authOptions.OidcScopes ?? GetValue("OidcScopes", "openid profile email", persist: false);
+        public string OidcRequiredGroup => _authOptions.OidcRequiredGroup ?? GetValue("OidcRequiredGroup", string.Empty, persist: false);
+        public string OidcGroupsClaim => _authOptions.OidcGroupsClaim ?? GetValue("OidcGroupsClaim", "groups", persist: false);
+        public string OidcUsernameClaim => _authOptions.OidcUsernameClaim ?? GetValue("OidcUsernameClaim", "preferred_username", persist: false);
     }
 }

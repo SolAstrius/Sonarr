@@ -64,6 +64,19 @@ namespace Sonarr.Http.Authentication
         public async Task<IActionResult> Logout()
         {
             _authService.Logout(HttpContext);
+
+            if (_configFileProvider.AuthenticationMethod == AuthenticationType.Oidc)
+            {
+                // Clear the local cookie *and* hit the provider's end-session endpoint,
+                // otherwise the next visit is silently signed straight back in.
+                var properties = new AuthenticationProperties
+                {
+                    RedirectUri = _configFileProvider.UrlBase + "/"
+                };
+
+                return SignOut(properties, AuthenticationType.Oidc.ToString(), AuthenticationBuilderExtensions.OidcRemoteScheme);
+            }
+
             await HttpContext.SignOutAsync(AuthenticationType.Forms.ToString());
             return Redirect(_configFileProvider.UrlBase + "/");
         }
