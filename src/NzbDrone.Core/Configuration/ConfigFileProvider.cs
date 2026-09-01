@@ -216,9 +216,18 @@ namespace NzbDrone.Core.Configuration
                     return AuthenticationType.Basic;
                 }
 
-                return Enum.TryParse<AuthenticationType>(_authOptions.Method, out var enumValue)
+                var method = Enum.TryParse<AuthenticationType>(_authOptions.Method, out var enumValue)
                     ? enumValue
                     : GetValueEnum("AuthenticationMethod", AuthenticationType.None);
+
+                // Selecting Oidc without a client id would leave the UI pointing at a
+                // scheme that was never registered; fall back rather than brick it.
+                if (method == AuthenticationType.Oidc && OidcClientId.IsNullOrWhiteSpace())
+                {
+                    return AuthenticationType.Forms;
+                }
+
+                return method;
             }
         }
 

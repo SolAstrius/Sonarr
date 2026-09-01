@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using NzbDrone.Common.Extensions;
@@ -46,8 +47,14 @@ namespace Sonarr.Http.Authentication
             return authenticationBuilder.AddScheme<AuthenticationSchemeOptions, NoAuthenticationHandler>(name, options => { });
         }
 
-        public static AuthenticationBuilder AddAppAuthentication(this IServiceCollection services)
+        public static AuthenticationBuilder AddAppAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
+            // The OpenIdConnect handler is an IAuthenticationRequestHandler, so it is
+            // constructed on every request and validates its options as it goes.  With no
+            // client id that validation throws, which would 500 the whole app, so the
+            // remote scheme is only registered once it is actually configured.
+            var oidcConfigured = (configuration["Sonarr:Auth:OidcClientId"] ?? configuration["OidcClientId"]).IsNotNullOrWhiteSpace();
+
             services.AddOptions<CookieAuthenticationOptions>(AuthenticationType.Forms.ToString())
                 .Configure<IConfigFileProvider>((options, configFileProvider) =>
                 {
@@ -75,7 +82,10 @@ namespace Sonarr.Http.Authentication
 
                     // Anything that would have shown the local login form instead starts
                     // the authorization-code flow at the identity provider.
-                    options.ForwardChallenge = OidcRemoteScheme;
+                    if (configFileProvider.OidcClientId.IsNotNullOrWhiteSpace())
+                    {
+                        options.ForwardChallenge = OidcRemoteScheme;
+                    }
                 });
 
             services.AddOptions<OpenIdConnectOptions>(OidcRemoteScheme)
@@ -144,13 +154,12 @@ namespace Sonarr.Http.Authentication
                     };
                 });
 
-            return services.AddAuthentication()
+            var builder = services.AddAuthentication()
                 .AddNone(AuthenticationType.None.ToString())
                 .AddExternal(AuthenticationType.External.ToString())
                 .AddBasic(AuthenticationType.Basic.ToString())
                 .AddCookie(AuthenticationType.Forms.ToString())
                 .AddCookie(AuthenticationType.Oidc.ToString())
-                .AddOpenIdConnect(OidcRemoteScheme, options => { })
                 .AddApiKey("API", options =>
                 {
                     options.HeaderName = "X-Api-Key";
@@ -161,6 +170,13 @@ namespace Sonarr.Http.Authentication
                     options.HeaderName = "X-Api-Key";
                     options.QueryName = "access_token";
                 });
+
+            if (oidcConfigured)
+            {
+                builder.AddOpenIdConnect(OidcRemoteScheme, options => { });
+            }
+
+            return builder;
         }
 
         private static string GetCookieName(IConfigFileProvider configFileProvider)

@@ -208,7 +208,7 @@ namespace NzbDrone.Host
                 .Build();
             });
 
-            services.AddAppAuthentication();
+            services.AddAppAuthentication(Configuration);
         }
 
         public void Configure(IApplicationBuilder app,
