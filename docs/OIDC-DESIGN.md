@@ -139,3 +139,85 @@ migration, UI. Only worth it if attribution per client matters. Deferred.
   is the same patch, so the cost is paid roughly once.
 - `Sonarr__Auth__Enabled=true` forces `Basic` *and rewrites config.xml* as a side
   effect of reading the property. Don't set it.
+
+---
+
+# As built
+
+Options 1 and 2 are implemented on `sol/oidc` and build clean through
+`docker-sonarr`'s `Dockerfile.source`. Image: `registry.sol.moe/sonarr:4.0.19.2979-oidc9`.
+
+## Config surface
+
+All read-only from config.xml or env (section `Sonarr:Auth`, no prefix), never
+persisted back, so a bad value is always correctable from the Deployment alone:
+
+| Env var | config.xml key | Default |
+|---|---|---|
+| `Sonarr__Auth__Method=Oidc` | `AuthenticationMethod` | `None` |
+| `Sonarr__Auth__OidcAuthority` | `OidcAuthority` | empty |
+| `Sonarr__Auth__OidcClientId` | `OidcClientId` | empty |
+| `Sonarr__Auth__OidcClientSecret` | `OidcClientSecret` | empty |
+| `Sonarr__Auth__OidcScopes` | `OidcScopes` | `openid profile email` |
+| `Sonarr__Auth__OidcRequiredGroup` | `OidcRequiredGroup` | empty (no group check) |
+| `Sonarr__Auth__OidcGroupsClaim` | `OidcGroupsClaim` | `groups` |
+| `Sonarr__Auth__OidcUsernameClaim` | `OidcUsernameClaim` | `preferred_username` |
+
+Redirect URI to register with the provider: `https://sonarr.media.sol.moe/signin-oidc`
+(plus `/signout-callback-oidc`). Both honour `UrlBase`.
+
+## Verified on a throwaway pod
+
+| Case | Result |
+|---|---|
+| `method=None`, API without key | 401 |
+| `method=None`, API with `X-Api-Key` | 200 |
+| `initialize.json` contains `apiKey` | no (0 occurrences) |
+| `method=Forms`, UI without cookie | 302 to `/login` |
+| `method=Forms`, POST `/login` | 302 (session issued) |
+| **API with session cookie, no key** | **200** |
+| API with neither | 401 |
+| API with key | 200 |
+| `method=Oidc`, GET `/` and `/login` | 302 to the provider's authorize endpoint, `response_type=code`, PKCE `S256`, `response_mode=form_post`, nonce + state, `redirect_uri=.../signin-oidc` |
+| `method=Oidc`, API without key | 401 (not redirected) |
+
+Not yet exercised: the token exchange, claim mapping and the group check. Those
+need a real provider; the wiring test used a public discovery document with a
+dummy client id, which proves everything up to the redirect and no further.
+
+## Three things that bit during implementation
+
+1. **CodePages.** Referencing `Microsoft.AspNetCore.Authentication.OpenIdConnect`
+   makes publish emit two copies of `System.Text.Encoding.CodePages` — the 8.0.0
+   package one that MimeKit (via MailKit) requires and Host compiles against, and
+   the runtime pack's older copy. `ErrorOnDuplicatePublishOutputFiles` is `false`
+   upstream, so MSBuild silently picked the wrong one and the app died at startup
+   with `FileLoadException`. Fixed with a target in `Directory.Build.props` that
+   drops the runtime pack copy. Downgrading the pin instead does not work: MimeKit
+   4.17 requires `>= 8.0.0` and NuGet fails with NU1605.
+2. **The OIDC handler validates its options on every request** — it is an
+   `IAuthenticationRequestHandler`, so it is constructed per request to check for
+   the callback path. With no client id that validation throws and *every* request
+   500s. The remote scheme is therefore registered only once configured, and
+   `AuthenticationMethod` refuses to resolve to `Oidc` without a client id.
+3. **BuildKit caches the `git clone` layer on the ref name**, so new commits on a
+   branch are silently not rebuilt — two "fixes" appeared to change nothing.
+   `Dockerfile.source` now takes `SONARR_SHA` and checks it out, which both busts
+   the cache and makes builds reproducible. Always pass it.
+
+## Authentik side (not done)
+
+Create an OAuth2/OpenID provider + application, then:
+
+- redirect URI `https://sonarr.media.sol.moe/signin-oidc`
+- client type confidential, copy id/secret into a `Secret` in ns `media`
+- if you want the group gate, add a scope mapping that emits `groups`, and set
+  `Sonarr__Auth__OidcRequiredGroup` to the group name
+
+## Deploying
+
+Keep `arr-allowlist` on the IngressRoute: none of this closes the east-west path,
+where any pod can still reach the ClusterIP with the API key.
+
+Break-glass is `Sonarr__Auth__Method=Forms` on the Deployment, which overrides
+config.xml. Confirm it works before switching the stored config.
