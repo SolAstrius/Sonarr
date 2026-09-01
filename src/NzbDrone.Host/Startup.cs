@@ -66,6 +66,26 @@ namespace NzbDrone.Host
                 options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
                 options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("fc00::"), 7));
                 options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("fe80::"), 10));
+
+                // A proxy that is not on a private network has to be named. Behind
+                // k3s + traefik on hostNetwork the connection is masqueraded to the
+                // node's public address, so without this every X-Forwarded-* header
+                // is discarded and the app believes it is being reached over http.
+                var trustedProxies = Configuration["Sonarr:Auth:TrustedProxies"] ?? Configuration["TrustedProxies"] ?? string.Empty;
+
+                foreach (var entry in trustedProxies.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    var parts = entry.Split('/');
+
+                    if (parts.Length == 2 && IPAddress.TryParse(parts[0], out var network) && int.TryParse(parts[1], out var prefixLength))
+                    {
+                        options.KnownNetworks.Add(new IPNetwork(network, prefixLength));
+                    }
+                    else if (IPAddress.TryParse(entry, out var address))
+                    {
+                        options.KnownProxies.Add(address);
+                    }
+                }
             });
 
             services.AddRouting(options => options.LowercaseUrls = true);
