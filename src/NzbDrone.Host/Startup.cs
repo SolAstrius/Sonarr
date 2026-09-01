@@ -17,7 +17,6 @@ using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Instrumentation;
 using NzbDrone.Common.Processes;
 using NzbDrone.Common.Serializer;
-using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Instrumentation;
@@ -202,31 +201,10 @@ namespace NzbDrone.Host
             services.AddSingleton<IAuthorizationPolicyProvider, UiAuthorizationPolicyProvider>();
             services.AddSingleton<IAuthorizationHandler, UiAuthorizationHandler>();
 
-            services.AddAuthorization(options =>
-            {
-                options.AddPolicy("SignalR", policy =>
-                {
-                    policy.AuthenticationSchemes.Add("SignalR");
-
-                    // A signed-in browser session authenticates the socket too, so the UI
-                    // no longer has to put the API key in the query string.
-                    policy.AuthenticationSchemes.Add(AuthenticationType.Forms.ToString());
-                    policy.AuthenticationSchemes.Add(AuthenticationType.Oidc.ToString());
-                    policy.RequireAuthenticatedUser();
-                });
-
-                // Require auth on everything except those marked [AllowAnonymous].
-                //
-                // The API accepts either the API key (machine clients: Prowlarr, arr-mcp,
-                // exportarr) or a session cookie (the web UI).  Only the two cookie
-                // schemes are listed: None/External resolve to NoAuthenticationHandler,
-                // which succeeds unconditionally, and adding them here would open the API
-                // outright whenever the UI is set to those methods.
-                options.FallbackPolicy = new AuthorizationPolicyBuilder("API")
-                .AddAuthenticationSchemes(AuthenticationType.Forms.ToString(), AuthenticationType.Oidc.ToString())
-                .RequireAuthenticatedUser()
-                .Build();
-            });
+            // The "SignalR" and fallback (API) policies are built per request by
+            // UiAuthorizationPolicyProvider, because which scheme authenticates the UI
+            // depends on the configured method and can change without a restart.
+            services.AddAuthorization();
 
             services.AddAppAuthentication(Configuration);
         }

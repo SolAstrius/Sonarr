@@ -7,10 +7,21 @@ import MenuButton from 'Components/Menu/MenuButton';
 import MenuContent from 'Components/Menu/MenuContent';
 import MenuItem from 'Components/Menu/MenuItem';
 import MenuItemSeparator from 'Components/Menu/MenuItemSeparator';
+import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { align, icons, kinds } from 'Helpers/Props';
 import { restart, shutdown } from 'Store/Actions/systemActions';
 import translate from 'Utilities/String/translate';
 import styles from './PageHeaderActionsMenu.css';
+
+interface User {
+  authenticationMethod: string;
+  isAuthenticated: boolean;
+  username?: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  groups?: string[];
+}
 
 interface PageHeaderActionsMenuProps {
   onKeyboardShortcutsPress(): void;
@@ -25,7 +36,9 @@ function PageHeaderActionsMenu(props: PageHeaderActionsMenuProps) {
     (state: AppState) => state.system.status.item
   );
 
-  const formsAuth = authentication === 'forms';
+  const signedIn = authentication === 'forms' || authentication === 'oidc';
+
+  const { data: user } = useApiQuery<User>({ url: '/user' });
 
   const handleRestartPress = useCallback(() => {
     dispatch(restart());
@@ -35,6 +48,8 @@ function PageHeaderActionsMenu(props: PageHeaderActionsMenuProps) {
     dispatch(shutdown());
   }, [dispatch]);
 
+  const showUser = signedIn && user?.isAuthenticated;
+
   return (
     <div>
       <Menu alignMenu={align.RIGHT}>
@@ -43,6 +58,40 @@ function PageHeaderActionsMenu(props: PageHeaderActionsMenuProps) {
         </MenuButton>
 
         <MenuContent>
+          {showUser ? (
+            <>
+              <div className={styles.user}>
+                {user?.avatar ? (
+                  <img className={styles.userAvatar} src={user.avatar} alt="" />
+                ) : (
+                  <Icon className={styles.userAvatarIcon} name={icons.INTERACTIVE} />
+                )}
+
+                <div className={styles.userDetails}>
+                  <div className={styles.userName}>
+                    {user?.name || user?.username}
+                  </div>
+
+                  {user?.email ? (
+                    <div className={styles.userSecondary}>{user.email}</div>
+                  ) : null}
+
+                  {user?.groups?.length ? (
+                    <div className={styles.userGroups}>
+                      {user.groups.map((group) => (
+                        <span key={group} className={styles.userGroup}>
+                          {group}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <MenuItemSeparator />
+            </>
+          ) : null}
+
           <MenuItem onPress={onKeyboardShortcutsPress}>
             <Icon className={styles.itemIcon} name={icons.KEYBOARD} />
             {translate('KeyboardShortcuts')}
@@ -68,7 +117,7 @@ function PageHeaderActionsMenu(props: PageHeaderActionsMenuProps) {
             </>
           )}
 
-          {formsAuth ? (
+          {signedIn ? (
             <>
               <MenuItemSeparator />
 

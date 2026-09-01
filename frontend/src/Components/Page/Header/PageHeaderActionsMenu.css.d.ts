@@ -3,6 +3,14 @@
 interface CssExports {
   'itemIcon': string;
   'menuButton': string;
+  'user': string;
+  'userAvatar': string;
+  'userAvatarIcon': string;
+  'userDetails': string;
+  'userGroup': string;
+  'userGroups': string;
+  'userName': string;
+  'userSecondary': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

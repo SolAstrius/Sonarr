@@ -13,6 +13,63 @@
   margin-right: 8px;
 }
 
+.user {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  max-width: 280px;
+}
+
+.userAvatar {
+  margin-right: 10px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+}
+
+.userAvatarIcon {
+  margin-right: 10px;
+  width: 32px;
+  color: var(--themeDarkColor);
+  font-size: 24px;
+}
+
+.userDetails {
+  min-width: 0;
+}
+
+.userName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--menuItemColor);
+  font-weight: bold;
+}
+
+.userSecondary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--disabledColor);
+  font-size: $smallFontSize;
+}
+
+.userGroups {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  gap: 4px;
+}
+
+.userGroup {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background-color: var(--toolbarMenuItemHoverBackgroundColor);
+  color: var(--disabledColor);
+  font-size: $extraSmallFontSize;
+}
+
 @media only screen and (max-width: $breakpointSmall) {
   .menuButton {
     margin-right: 5px;
