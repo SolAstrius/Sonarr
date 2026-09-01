@@ -228,7 +228,7 @@
        output contain two copies of System.Text.Encoding.CodePages: the 8.0.0 package
        one that MimeKit (via MailKit) requires and Host is compiled against, and the
        runtime pack's own older copy.  ErrorOnDuplicatePublishOutputFiles is false
-       here, so MSBuild silently picks one -- and it started picking the runtime pack
+       here, so MSBuild silently picks one, and it started picking the runtime pack
        copy, which fails at startup with a FileLoadException.  Drop that copy so the
        package file is unambiguous. -->
   <Target Name="SonarrPreferPackagedCodePages" AfterTargets="ComputeResolvedFilesToPublishList">
