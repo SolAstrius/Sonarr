@@ -7,6 +7,10 @@
     <PackageReference Include="ImpromptuInterface" Version="7.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="6.0.36" />
     <PackageReference Include="NLog" Version="5.3.4" />
+    <!-- Pinned to match Sonarr.Host: adding the ASP.NET OIDC package makes
+         conflict resolution prefer the runtime pack copy of CodePages, which
+         is a lower assembly version than Host is compiled against. -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Core\Sonarr.Core.csproj" />
