@@ -65,6 +65,21 @@ namespace Sonarr.Http.Authentication
                     options.ExpireTimeSpan = TimeSpan.FromDays(7);
                     options.SlidingExpiration = true;
                     options.ReturnUrlParameter = "returnUrl";
+
+                    // Now that this scheme also guards the API, an unauthenticated API
+                    // call must answer 401 rather than redirect a machine client into
+                    // the login page.
+                    options.Events.OnRedirectToLogin = context =>
+                    {
+                        if (IsApiRequest(context.Request, configFileProvider.UrlBase))
+                        {
+                            context.Response.StatusCode = 401;
+                            return Task.CompletedTask;
+                        }
+
+                        context.Response.Redirect(context.RedirectUri);
+                        return Task.CompletedTask;
+                    };
                 });
 
             services.AddOptions<CookieAuthenticationOptions>(AuthenticationType.Oidc.ToString())
@@ -81,11 +96,21 @@ namespace Sonarr.Http.Authentication
                     options.ReturnUrlParameter = "returnUrl";
 
                     // Anything that would have shown the local login form instead starts
-                    // the authorization-code flow at the identity provider.
-                    if (configFileProvider.OidcClientId.IsNotNullOrWhiteSpace())
+                    // the authorization-code flow at the identity provider -- except an
+                    // API call, which gets a 401 like it always did.  This is done per
+                    // request rather than with ForwardChallenge precisely so the two
+                    // cases can be told apart.
+                    options.Events.OnRedirectToLogin = context =>
                     {
-                        options.ForwardChallenge = OidcRemoteScheme;
-                    }
+                        if (IsApiRequest(context.Request, configFileProvider.UrlBase) ||
+                            configFileProvider.OidcClientId.IsNullOrWhiteSpace())
+                        {
+                            context.Response.StatusCode = 401;
+                            return Task.CompletedTask;
+                        }
+
+                        return context.HttpContext.ChallengeAsync(OidcRemoteScheme);
+                    };
                 });
 
             services.AddOptions<OpenIdConnectOptions>(OidcRemoteScheme)
@@ -177,6 +202,20 @@ namespace Sonarr.Http.Authentication
             }
 
             return builder;
+        }
+
+        private static bool IsApiRequest(HttpRequest request, string urlBase)
+        {
+            var path = request.Path.Value ?? string.Empty;
+
+            if (urlBase.IsNotNullOrWhiteSpace() && path.StartsWith(urlBase, StringComparison.OrdinalIgnoreCase))
+            {
+                path = path.Substring(urlBase.Length);
+            }
+
+            return path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) ||
+                   path.StartsWith("/feed/", StringComparison.OrdinalIgnoreCase) ||
+                   path.StartsWith("/signalr/", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string GetCookieName(IConfigFileProvider configFileProvider)
