@@ -221,3 +221,28 @@ where any pod can still reach the ClusterIP with the API key.
 
 Break-glass is `Sonarr__Auth__Method=Forms` on the Deployment, which overrides
 config.xml. Confirm it works before switching the stored config.
+
+## Live cutover (2026-09-01)
+
+Running against Authentik at `auth.sol.moe`, provider pk 84 / application slug
+`sonarr`, image `registry.sol.moe/sonarr:4.0.19.2979-oidc10`. Two things had to
+be fixed that no amount of local testing would have surfaced:
+
+1. **Every `X-Forwarded-*` header was being discarded.** Sonarr only trusts those
+   headers from RFC1918/ULA peers, but traefik runs on `hostNetwork` and its
+   connection is masqueraded to the node's *public* address (`95.216.18.253`), so
+   the app believed it was serving plain http and sent Authentik an http
+   `redirect_uri`, which fails the strict match. Added
+   `Sonarr__Auth__TrustedProxies` (comma-separated addresses or CIDRs, appended
+   to KnownProxies/KnownNetworks) and set it to the node addresses. This was a
+   pre-existing condition of the k8s migration, not something OIDC introduced:
+   client IPs in the auth log have been the node address ever since, and
+   `AuthenticationRequired=DisabledForLocalAddresses` would have been evaluating
+   the wrong address too.
+2. **Authentik's API defaults `grant_types` to empty.** Creating the provider over
+   the REST API without naming it produced `grant_types = []`, and every
+   authorize request died with `invalid_request` / "The request is otherwise
+   malformed"; the reason is only visible in the authentik server log, as
+   "Invalid grant_type for provider". Set to `['authorization_code']`. The
+   post-logout URI also needs `redirect_uri_type: logout` rather than
+   `authorization`.
