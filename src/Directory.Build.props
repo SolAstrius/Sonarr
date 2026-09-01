@@ -6,6 +6,13 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
 
+    <!-- Referencing Microsoft.AspNetCore.Authentication.OpenIdConnect (an in-framework
+         package) flips file-conflict resolution to prefer runtime-pack copies of
+         framework assemblies.  That swapped the CodePages 8.0.0 package file Host is
+         compiled against for the 6.0.x runtime-pack one, and the app died at startup
+         with a FileLoadException.  Keep the package file winning. -->
+    <PackageConflictPreferredPackages>System.Text.Encoding.CodePages;$(PackageConflictPreferredPackages)</PackageConflictPreferredPackages>
+
     <PlatformTarget>AnyCPU</PlatformTarget>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <RuntimeIdentifiers>win-x64;win-x86;osx-x64;osx-arm64;linux-x64;linux-musl-x64;linux-arm;linux-arm64;linux-musl-arm64</RuntimeIdentifiers>
