@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import AppState from 'App/State/AppState';
 import Icon from 'Components/Icon';
@@ -40,6 +40,14 @@ function PageHeaderActionsMenu(props: PageHeaderActionsMenuProps) {
 
   const { data: user } = useApiQuery<User>({ url: '/user' });
 
+  // Authentik builds gravatar URLs with default=404, so a user without one
+  // gets a broken image rather than no image.
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  const handleAvatarError = useCallback(() => {
+    setAvatarFailed(true);
+  }, []);
+
   const handleRestartPress = useCallback(() => {
     dispatch(restart());
   }, [dispatch]);
@@ -61,8 +69,13 @@ function PageHeaderActionsMenu(props: PageHeaderActionsMenuProps) {
           {showUser ? (
             <>
               <div className={styles.user}>
-                {user?.avatar ? (
-                  <img className={styles.userAvatar} src={user.avatar} alt="" />
+                {user?.avatar && !avatarFailed ? (
+                  <img
+                    className={styles.userAvatar}
+                    src={user.avatar}
+                    alt=""
+                    onError={handleAvatarError}
+                  />
                 ) : (
                   <Icon className={styles.userAvatarIcon} name={icons.INTERACTIVE} />
                 )}

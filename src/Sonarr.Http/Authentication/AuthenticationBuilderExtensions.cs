@@ -127,7 +127,11 @@ namespace Sonarr.Http.Authentication
 
                     options.ResponseType = OpenIdConnectResponseType.Code;
                     options.UsePkce = true;
-                    options.SaveTokens = false;
+
+                    // Keeps the id_token in the auth cookie so sign-out can send it as
+                    // id_token_hint: Authentik refuses an RP-initiated logout that
+                    // carries a post_logout_redirect_uri without one.
+                    options.SaveTokens = true;
                     options.GetClaimsFromUserInfoEndpoint = true;
                     options.RequireHttpsMetadata = options.Authority?.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ?? true;
 
